@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel Pro Hub v23</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { rate } from 'https://cdn.skypack.dev/openskill';
+        window.openskill = { rate };
+    </script>
+    <style>
+        body { background-color: #020617; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .win-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; margin: 0 1px; }
+        .loss-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #f43f5e; margin: 0 1px; }
+        select { color-scheme: dark; }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <header class="bg-slate-900 p-6 rounded-3xl border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-900/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight text-white">Padel Pro Hub</h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span id="statusLight" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span id="statusText" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="downloadData()" class="text-xs font-bold px-4 py-2 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">Backup</button>
+                <label class="text-xs font-bold px-4 py-2 rounded-xl bg-blue-600 text-white cursor-pointer">
+                    Restore <input type="file" id="fileInput" class="hidden" onchange="uploadData(event)">
+                </label>
+            </div>
+        </header>
+
+        <div class="grid lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-4 space-y-6">
+                <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <h2 class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest">Recruit Player</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="playerName" placeholder="Player Name" class="flex-1 p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white outline-none">
+                        <button onclick="addPlayer()" class="bg-slate-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold">Add</button>
+                    </div>
+                </section>
+
+                <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Attendance</h2>
+                        <button onclick="clearAttendance()" class="text-[10px] font-bold text-blue-400 hover:underline uppercase">Clear All</button>
+                    </div>
+                    <div id="attendeeList" class="space-y-1 max-h-80 overflow-y-auto pr-2 scrollbar-hide mb-4"></div>
+                    
+                    <div class="flex items-center justify-between mb-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-800">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Randomize Pairings</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="randomToggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <button onclick="generateSession()" id="genBtn" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-500 transition disabled:opacity-20 shadow-lg">
+                        GENERATE SESSION
+                    </button>
+                    <div class="mt-4 text-[10px] text-center text-slate-500 font-bold uppercase"><span id="playerCount" class="text-emerald-400">0</span> Players Ready</div>
+                </section>
+            </div>
+
+            <div class="lg:col-span-8 space-y-6">
+                <div class="flex gap-6 border-b border-slate-800 px-2 overflow-x-auto scrollbar-hide">
+                    <button onclick="switchTab('ranking')" id="tab-ranking" class="pb-3 text-sm font-bold border-b-2 border-blue-500 text-blue-500 whitespace-nowrap">Leaderboard</button>
+                    <button onclick="switchTab('history')" id="tab-history" class="pb-3 text-sm font-bold border-b-2 border-transparent text-slate-500 whitespace-nowrap">Match Logs</button>
+                    <button onclick="switchTab('schedule')" id="tab-schedule" class="pb-3 text-sm font-bold border-b-2 border-transparent text-slate-500 whitespace-nowrap">Schedule</button>
+                </div>
+
+                <section id="content-ranking" class="space-y-4">
+                    <div class="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-[10px] font-black uppercase text-slate-500 border-b border-slate-800 bg-slate-800/30">
+                                    <th class="px-6 py-4">Player</th>
+                                    <th class="px-4 py-4 text-center">Form</th>
+                                    <th class="px-4 py-4 text-right">Rating</th>
+                                    <th class="px-6 py-4 text-right">Conf.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody" class="divide-y divide-slate-800 text-sm"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="content-history" class="hidden space-y-6">
+                    <div id="loggerSection" class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl transition-all duration-300">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 id="loggerTitle" class="text-xl font-black text-white tracking-tight">Log Match</h2>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Enter results below</p>
+                            </div>
+                            <button id="cancelInsert" onclick="cancelInsertion()" class="hidden text-xs text-rose-400 font-bold px-3 py-1 bg-rose-400/10 rounded-lg">Cancel</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/20">
+                                <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Winners
+                                </p>
+                                <select id="p1" class="w-full p-2.5 bg-slate-800 rounded-xl text-sm text-white border-none mb-2"></select>
+                                <select id="p2" class="w-full p-2.5 bg-slate-800 rounded-xl text-sm text-white border-none"></select>
+                            </div>
+                            <div class="p-4 bg-rose-500/5 rounded-2xl border border-rose-500/20">
+                                <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Losers
+                                </p>
+                                <select id="p3" class="w-full p-2.5 bg-slate-800 rounded-xl text-sm text-white border-none mb-2"></select>
+                                <select id="p4" class="w-full p-2.5 bg-slate-800 rounded-xl text-sm text-white border-none"></select>
+                            </div>
+                        </div>
+                        <button onclick="submitMatch()" class="w-full bg-white text-slate-950 py-4 rounded-2xl font-black hover:bg-slate-200 transition active:scale-95">SUBMIT RESULT</button>
+                    </div>
+                    <div id="historyList" class="space-y-4"></div>
+                </section>
+
+                <section id="content-schedule" class="hidden space-y-6">
+                    <div id="scheduleResults"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+        <div class="bg-slate-900 w-full max-w-sm rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 id="modalName" class="text-3xl font-black text-white tracking-tight"></h2>
+                        <p class="text-[10px] text-blue-500 font-black uppercase tracking-[0.2em] mt-1">Player Profile</p>
+                    </div>
+                    <button onclick="closeModal()" class="bg-slate-800 p-2 rounded-xl text-slate-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-800/50 p-3 rounded-2xl flex justify-between items-center px-4">
+                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Recent Form</span>
+                        <div id="modalFormDots" class="flex gap-1.5"></div>
+                    </div>
+
+                    <div class="p-5 bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 rounded-3xl flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest">Best Win Streak</p>
+                            <p id="streakCount" class="text-2xl font-black text-white">0</p>
+                        </div>
+                        <div class="bg-amber-500/20 p-3 rounded-2xl text-amber-500">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.921l-2.01 3.522a.75.75 0 01-.575.378 3.503 3.503 0 00-1.943.868L4.032 9.715a4.5 4.5 0 005.68 6.91l.113-.071a.75.75 0 01.79-.014l1.527.859a.75.75 0 001.09-.426l1.728-4.512a4.5 4.5 0 00-4.86-6.03l-.007.001a.75.75 0 01-.703-.352l-1.02-1.784a.75.75 0 01.015-.75z"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-blue-500/5 border border-blue-500/10 rounded-3xl text-center">
+                            <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2">Soulmate</p>
+                            <p id="soulmateName" class="text-sm font-bold text-white truncate">-</p>
+                        </div>
+                        <div class="p-4 bg-rose-500/5 border border-rose-500/10 rounded-3xl text-center">
+                            <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-2">Nemesis</p>
+                            <p id="nemesisName" class="text-sm font-bold text-white truncate">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-2">
+                <button onclick="closeModal()" class="w-full bg-slate-800/50 py-4 rounded-2xl text-xs font-black text-slate-500 hover:text-white transition uppercase tracking-widest">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let players = JSON.parse(localStorage.getItem('padelPlayers')) || [];
+        let matchHistory = JSON.parse(localStorage.getItem('padelHistory')) || [];
+        let stats = {};
+
+        // ENGINE BOOTSTRAP
+        const engineCheck = setInterval(() => {
+            if (window.openskill && window.openskill.rate) {
+                clearInterval(engineCheck);
+                document.getElementById('statusLight').classList.replace('bg-amber-500', 'bg-emerald-500');
+                document.getElementById('statusLight').classList.remove('animate-pulse');
+                document.getElementById('statusText').innerText = "Engine Live";
+                recalculateEverything();
+            }
+        }, 500);
+
+        function recalculateEverything() {
+            if (!window.openskill) return;
+            stats = {};
+            players.forEach(p => { 
+                p.rating = { mu: 25.0, sigma: 8.333 };
+                stats[p.name] = { wins: 0, losses: 0, form: [] };
+            });
+
+            matchHistory.forEach(m => {
+                const teamA = m.winners.map(n => players.find(p => p.name === n)?.rating).filter(r => r);
+                const teamB = m.losers.map(n => players.find(p => p.name === n)?.rating).filter(r => r);
+                if (teamA.length && teamB.length) {
+                    const updated = window.openskill.rate([teamA, teamB]);
+                    m.winners.forEach((n, i) => { 
+                        const p = players.find(x => x.name === n); if(p) p.rating = updated[0][i];
+                        if(stats[n]) { stats[n].wins++; stats[n].form.push('W'); }
+                    });
+                    m.losers.forEach((n, i) => { 
+                        const p = players.find(x => x.name === n); if(p) p.rating = updated[1][i];
+                        if(stats[n]) { stats[n].losses++; stats[n].form.push('L'); }
+                    });
+                }
+            });
+            render();
+        }
+
+        function render() {
+            const sorted = [...players].sort((a,b) => (b.rating.mu - 3*b.rating.sigma) - (a.rating.mu - 3*a.rating.sigma));
+            document.getElementById('leaderboardBody').innerHTML = sorted.map(p => {
+                const s = stats[p.name] || { wins: 0, losses: 0, form: [] };
+                const winPct = (s.wins + s.losses) > 0 ? ((s.wins / (s.wins + s.losses)) * 100).toFixed(0) : 0;
+                const formDots = s.form.slice(-5).map(r => `<span class="${r === 'W' ? 'win-dot' : 'loss-dot'}"></span>`).join('');
+                return `
+                <tr class="hover:bg-slate-800/50 transition">
+                    <td onclick="showPlayerDetails('${p.name}')" class="px-6 py-4 font-bold text-white cursor-pointer hover:text-blue-400 transition">
+                        ${p.name}
+                        <div class="text-[9px] text-slate-500 uppercase font-black">${s.wins}W - ${s.losses}L (${winPct}%)</div>
+                    </td>
+                    <td class="px-4 py-4 text-center"><div class="flex gap-0.5 justify-center">${formDots}</div></td>
+                    <td class="px-4 py-4 text-right font-mono text-blue-400 font-black">${(p.rating.mu - 3*p.rating.sigma).toFixed(2)}</td>
+                    <td class="px-6 py-4 text-right text-xs font-mono text-slate-600">±${(p.rating.sigma * 3).toFixed(1)}</td>
+                </tr>`;
+            }).join('');
+
+            const alpha = [...players].sort((a,b) => a.name.localeCompare(b.name));
+            const opts = '<option value="">- Select -</option>' + alpha.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            ['p1', 'p2', 'p3', 'p4'].forEach(id => { const el = document.getElementById(id); if(el) { const v = el.value; el.innerHTML = opts; el.value = v; } });
+
+            document.getElementById('attendeeList').innerHTML = alpha.map(p => `
+                <label class="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-2xl cursor-pointer transition">
+                    <input type="checkbox" onchange="updateCounter()" class="attendee-check w-5 h-5 rounded-lg border-slate-700 bg-slate-800 text-blue-500 focus:ring-0" value="${p.name}">
+                    <span class="text-sm font-bold text-slate-300">${p.name}</span>
+                </label>`).join('');
+
+            let h = '';
+            [...matchHistory].reverse().forEach((m, idx) => {
+                const oIdx = matchHistory.length - 1 - idx;
+                h += `
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center group shadow-lg">
+                    <div class="flex gap-4 items-center">
+                        <div class="text-[10px] font-black text-slate-700 w-6">#${oIdx+1}</div>
+                        <div class="text-sm font-bold text-slate-300"><span class="text-emerald-400">${m.winners.join(' & ')}</span> <span class="text-slate-600 font-normal mx-1">def.</span> <span class="text-slate-400">${m.losers.join(' & ')}</span></div>
+                    </div>
+                    <button onclick="deleteMatch(${m.id})" class="text-slate-700 hover:text-rose-500 font-black text-[10px] transition">DELETE</button>
+                </div>`;
+            });
+            document.getElementById('historyList').innerHTML = h;
+            updateCounter();
+        }
+
+        function updateCounter() {
+            const c = document.querySelectorAll('.attendee-check:checked').length;
+            document.getElementById('playerCount').innerText = c;
+            document.getElementById('genBtn').disabled = (c < 4);
+        }
+
+        function showPlayerDetails(name) {
+            let partners = {};
+            let opponents = {};
+            let currentStreak = 0;
+            let maxStreak = 0;
+            let recentForm = [];
+
+            matchHistory.forEach(m => {
+                const win = m.winners.includes(name);
+                const loss = m.losers.includes(name);
+
+                if (win) {
+                    currentStreak++;
+                    if (currentStreak > maxStreak) maxStreak = currentStreak;
+                    recentForm.push('W');
+                    // Logic: If we won, my partner gets +1 "Soulmate" point
+                    m.winners.filter(n => n !== name).forEach(p => {
+                        partners[p] = (partners[p] || 0) + 1;
+                    });
+                } else if (loss) {
+                    currentStreak = 0;
+                    recentForm.push('L');
+                    // Logic: If we lost, everyone on the winning team gets +1 "Nemesis" point
+                    m.winners.forEach(o => {
+                        opponents[o] = (opponents[o] || 0) + 1;
+                    });
+                }
+            });
+
+            // Sort to find the top partner and top opponent
+            const soulmateArr = Object.entries(partners).sort((a,b) => b[1] - a[1]);
+            const nemesisArr = Object.entries(opponents).sort((a,b) => b[1] - a[1]);
+
+            // Update Modal Content
+            document.getElementById('modalName').innerText = name;
+            document.getElementById('streakCount').innerText = `${maxStreak} ${maxStreak === 1 ? 'Match' : 'Matches'}`;
+            
+            // Soulmate: Show if they have at least 1 win together
+            document.getElementById('soulmateName').innerText = (soulmateArr.length > 0 && soulmateArr[0][1] > 0) 
+                ? soulmateArr[0][0] 
+                : 'No wins yet';
+
+            // Nemesis: Only show if someone has beaten you MORE than once (> 1)
+            // This addresses your "no repeated matchups" point perfectly.
+            document.getElementById('nemesisName').innerText = (nemesisArr.length > 0 && nemesisArr[0][1] > 1) 
+                ? nemesisArr[0][0] 
+                : 'No rivals yet';
+            
+            // Form Dots
+            const formHtml = recentForm.slice(-5).map(r => 
+                `<span class="w-2.5 h-2.5 rounded-full ${r === 'W' ? 'bg-emerald-500' : 'bg-rose-500'}"></span>`
+            ).join('');
+            document.getElementById('modalFormDots').innerHTML = formHtml || '<span class="text-slate-600 font-bold text-[10px]">NO DATA</span>';
+
+            document.getElementById('playerModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('playerModal').classList.add('hidden');
+        }
+
+        function submitMatch() {
+            const w = [document.getElementById('p1').value, document.getElementById('p2').value].filter(x=>x);
+            const l = [document.getElementById('p3').value, document.getElementById('p4').value].filter(x=>x);
+            if (w.length < 2 || l.length < 2) return alert("Select 4 players");
+            const m = { id: Date.now(), winners: w, losers: l };
+            matchHistory.push(m);
+            localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+            recalculateEverything();
+        }
+
+        function switchTab(t) {
+            ['ranking', 'history', 'schedule'].forEach(x => {
+                document.getElementById(`content-${x}`).classList.add('hidden');
+                document.getElementById(`tab-${x}`).classList.replace('border-blue-500', 'border-transparent');
+                document.getElementById(`tab-${x}`).classList.replace('text-blue-500', 'text-slate-500');
+            });
+            document.getElementById(`content-${t}`).classList.remove('hidden');
+            document.getElementById(`tab-${t}`).classList.replace('border-transparent', 'border-blue-500');
+            document.getElementById(`tab-${t}`).classList.replace('text-slate-500', 'text-blue-500');
+        }
+
+        function addPlayer() { 
+            const i = document.getElementById('playerName'); const n = i.value.trim(); 
+            if (n && !players.find(p=>p.name===n)) { 
+                players.push({ name: n, rating: { mu: 25.0, sigma: 8.333 } }); 
+                i.value = ''; localStorage.setItem('padelPlayers', JSON.stringify(players)); recalculateEverything();
+            } 
+        }
+
+        // CORE ENGINE v23
+        function generateSession() {
+            const names = Array.from(document.querySelectorAll('.attendee-check:checked')).map(cb => cb.value);
+            const isRandom = document.getElementById('randomToggle').checked;
+            
+            let attendees = players.filter(p => names.includes(p.name));
+            attendees.sort((a,b) => b.rating.mu - a.rating.mu); // Ranked 1 to N
+
+            let pairs = [];
+
+            if (isRandom && attendees.length >= 4) {
+                // --- OPT-IN: 4-BUCKET JITTER ---
+                const size = attendees.length;
+                const qSize = Math.floor(size / 4);
+                
+                // Divide into 4 Quartiles
+                let q1 = attendees.slice(0, qSize);
+                let q2 = attendees.slice(qSize, qSize * 2);
+                let q3 = attendees.slice(qSize * 2, qSize * 3);
+                let q4 = attendees.slice(qSize * 3);
+
+                // Shuffle within buckets to create variety
+                const shuffle = (arr) => arr.sort(() => Math.random() - 0.5);
+                [q1, q2, q3, q4].forEach(shuffle);
+
+                // Pair Q1 with Q4 (Elite + Developing)
+                while(q1.length > 0 && q4.length > 0) {
+                    let p1 = q1.shift();
+                    let p2 = q4.shift();
+                    pairs.push(createTeam(p1, p2));
+                }
+                // Pair Q2 with Q3 (Strong + Average)
+                while(q2.length > 0 && q3.length > 0) {
+                    let p1 = q2.shift();
+                    let p2 = q3.shift();
+                    pairs.push(createTeam(p1, p2));
+                }
+                // Handle remainders (if count not divisible by 4)
+                let leftovers = [...q1, ...q2, ...q3, ...q4];
+                while(leftovers.length > 0) {
+                    let p1 = leftovers.shift();
+                    let p2 = leftovers.shift(); // Might be undefined
+                    pairs.push(createTeam(p1, p2));
+                }
+
+            } else {
+                // --- DEFAULT: MATHEMATICAL BEST (Anchor Pairing) ---
+                let temp = [...attendees];
+                while(temp.length > 0) { 
+                    let hi = temp.shift(); 
+                    let lo = temp.pop(); 
+                    pairs.push(createTeam(hi, lo)); 
+                }
+            }
+
+            // Helper to format team object
+            function createTeam(p1, p2) {
+                return {
+                    id: Math.random().toString(36).substr(2,5),
+                    names: [p1.name, (p2 ? p2.name : 'BYE')].sort(),
+                    skill: p1.rating.mu + (p2 ? p2.rating.mu : 0)
+                };
+            }
+
+            // Priority 2: Matchups (Sort teams by skill and find closest neighbor opponents)
+            pairs.sort((a, b) => b.skill - a.skill);
+
+            let totalRounds = (pairs.length % 2 !== 0) ? pairs.length : 3;
+            let finalSchedule = [];
+            let globalTracker = new Set();
+
+            for (let r = 0; r < totalRounds; r++) {
+                let roundMatches = []; 
+                let usedIndices = new Set();
+                let sideline = (pairs.length % 2 !== 0) ? pairs[r % pairs.length] : null;
+                if (sideline) usedIndices.add(r % pairs.length);
+
+                function solve(pIdx) {
+                    if (usedIndices.size === pairs.length) return true;
+                    if (pIdx >= pairs.length) return false;
+                    if (usedIndices.has(pIdx)) return solve(pIdx + 1);
+
+                    for (let j = 0; j < pairs.length; j++) {
+                        if (usedIndices.has(j) || j === pIdx) continue;
+                        const key = [pairs[pIdx].names.join('&'), pairs[j].names.join('&')].sort().join('-vs-');
+                        
+                        if (!globalTracker.has(key)) {
+                            globalTracker.add(key); 
+                            roundMatches.push([pairs[pIdx], pairs[j]]);
+                            usedIndices.add(pIdx); 
+                            usedIndices.add(j);
+                            if (solve(pIdx + 1)) return true;
+                            globalTracker.delete(key); 
+                            roundMatches.pop(); 
+                            usedIndices.delete(pIdx); 
+                            usedIndices.delete(j);
+                        }
+                    }
+                    return false;
+                }
+                if (solve(0)) finalSchedule.push({ matches: roundMatches, sideline });
+            }
+            renderSchedule(finalSchedule, totalRounds, pairs);
+        }
+
+        function renderSchedule(schedule, totalRounds, pairs) {
+            let textToShare = `🎾 PADEL SESSION 🎾\n\nTEAMS:\n`;
+            pairs.forEach((p, i) => textToShare += `${i+1}. ${p.names.join(' & ')} (Skill: ${p.skill.toFixed(1)})\n`);
+            
+            schedule.forEach((rd, i) => {
+                textToShare += `\nROUND ${i+1}\n`;
+                if(rd.sideline) textToShare += `RESTING: ${rd.sideline.names.join(' & ')}\n`;
+                rd.matches.forEach((m, ci) => textToShare += `Court ${ci+1}: ${m[0].names.join(' & ')} vs ${m[1].names.join(' & ')}\n`);
+            });
+
+            let html = `
+                <div class="bg-slate-900 p-6 pb-10 rounded-3xl border border-slate-800 mb-10 relative shadow-2xl">
+                    <button onclick="shareSchedule('${encodeURIComponent(textToShare)}')" 
+                            class="absolute top-6 right-6 bg-blue-600 text-[10px] font-black px-4 py-2 rounded-xl text-white shadow-lg active:scale-95 transition-all">
+                        SHARE TEXT
+                    </button>
+                    
+                    <h2 class="text-xs font-black uppercase text-blue-500 tracking-[0.2em] mb-6">Team Compositions</h2>
+                    
+                    <div class="grid md:grid-cols-3 gap-3 mb-2">
+                        ${pairs.map((p, i) => `
+                        <div class="p-3 bg-slate-800/50 border border-slate-800 rounded-2xl flex justify-between items-center">
+                            <div>
+                                <span class="text-[9px] text-slate-500 font-bold uppercase">Team ${i+1}</span>
+                                <p class="text-sm font-bold text-white">${p.names.join(' & ')}</p>
+                            </div>
+                            <div class="text-right font-mono text-blue-400 text-[10px] bg-blue-400/10 px-2 py-1 rounded-lg">
+                                ${p.skill.toFixed(1)}
+                            </div>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+
+            schedule.forEach((rd, i) => {
+                html += `
+                <div class="mb-10 group">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-md">ROUND ${i+1}</span>
+                        <div class="h-px bg-slate-800 flex-1"></div>
+                    </div>
+                    ${rd.sideline ? `
+                    <div class="mb-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-amber-500 font-black uppercase tracking-widest">Sideline</span>
+                            <span class="text-sm font-bold text-amber-200">${rd.sideline.names.join(' & ')}</span>
+                        </div>
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    </div>` : ''}
+                    <div class="grid md:grid-cols-2 gap-4">
+                        ${rd.matches.map((m, ci) => `
+                        <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center hover:border-blue-500/50 transition shadow-lg">
+                            <div class="flex flex-col"><span class="text-[9px] text-slate-500 font-bold uppercase mb-1">Court ${ci+1}</span><span class="font-bold text-white text-sm">${m[0].names.join(' & ')}</span></div>
+                            <div class="text-[10px] font-black text-slate-700 italic px-4">VS</div>
+                            <div class="flex flex-col text-right"><span class="text-[9px] text-slate-500 font-bold uppercase mb-1 invisible">Court ${ci+1}</span><span class="font-bold text-white text-sm">${m[1].names.join(' & ')}</span></div>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+            });
+            document.getElementById('scheduleResults').innerHTML = html;
+            switchTab('schedule');
+        }
+
+        function shareSchedule(enc) {
+            const text = decodeURIComponent(enc);
+            if (navigator.share) navigator.share({ text: text });
+            else { navigator.clipboard.writeText(text); alert("Copied to clipboard!"); }
+        }
+
+        function deleteMatch(id) { if(confirm("Delete?")) { matchHistory = matchHistory.filter(m=>m.id!==id); localStorage.setItem('padelHistory', JSON.stringify(matchHistory)); recalculateEverything(); } }
+        function downloadData() { const b = new Blob([JSON.stringify({players, matchHistory})], {type:"application/json"}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `padel_data_v23.json`; a.click(); }
+        function uploadData(e) { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); players = d.players; matchHistory = d.matchHistory; recalculateEverything(); }; r.readAsText(e.target.files[0]); }
+        function clearAttendance() { document.querySelectorAll('.attendee-check').forEach(c => c.checked = false); updateCounter(); }
+    </script>
+</body>
+</html>
