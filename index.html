@@ -244,11 +244,24 @@
             const opts = '<option value="">- Select -</option>' + alpha.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
             ['p1', 'p2', 'p3', 'p4'].forEach(id => { const el = document.getElementById(id); if(el) { const v = el.value; el.innerHTML = opts; el.value = v; } });
 
-            document.getElementById('attendeeList').innerHTML = alpha.map(p => `
-                <label class="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-2xl cursor-pointer transition">
-                    <input type="checkbox" onchange="updateCounter()" class="attendee-check w-5 h-5 rounded-lg border-slate-700 bg-slate-800 text-blue-500 focus:ring-0" value="${p.name}">
-                    <span class="text-sm font-bold text-slate-300">${p.name}</span>
-                </label>`).join('');
+            document.getElementById('attendeeList').innerHTML = alpha.map(p => {
+                // Check if player has played any matches
+                const hasMatches = matchHistory.some(m => m.winners.includes(p.name) || m.losers.includes(p.name));
+
+                return `
+                <div class="flex items-center justify-between p-3 hover:bg-slate-800 rounded-2xl transition group">
+                    <label class="flex items-center gap-3 cursor-pointer flex-1">
+                        <input type="checkbox" onchange="updateCounter()" class="attendee-check w-5 h-5 rounded-lg border-slate-700 bg-slate-800 text-blue-500 focus:ring-0" value="${p.name}">
+                        <span class="text-sm font-bold text-slate-300">${p.name}</span>
+                    </label>
+                    
+                    ${!hasMatches ? `
+                        <button onclick="deletePlayer('${p.name}')" class="opacity-0 group-hover:opacity-100 text-[10px] font-black text-rose-500 hover:text-rose-400 transition px-2">
+                            REMOVE
+                        </button>
+                    ` : ''}
+                </div>`;
+            }).join('');
 
             let h = '';
             [...matchHistory].reverse().forEach((m, idx) => {
@@ -327,6 +340,14 @@
             document.getElementById('modalFormDots').innerHTML = formHtml || '<span class="text-slate-600 font-bold text-[10px]">NO DATA</span>';
 
             document.getElementById('playerModal').classList.remove('hidden');
+        }
+
+        function deletePlayer(name) {
+            if (confirm(`Are you sure you want to remove ${name}?`)) {
+                players = players.filter(p => p.name !== name);
+                localStorage.setItem('padelPlayers', JSON.stringify(players));
+                recalculateEverything(); // Re-runs calculations and re-renders the UI
+            }
         }
 
         function closeModal() {
@@ -535,9 +556,24 @@
             else { navigator.clipboard.writeText(text); alert("Copied to clipboard!"); }
         }
 
+        function uploadData(e) {
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const d = JSON.parse(ev.target.result);
+                players = d.players || [];
+                matchHistory = d.matchHistory || [];
+
+                // ✅ UPDATE LOCALSTORAGE IMMEDIATELY
+                localStorage.setItem('padelPlayers', JSON.stringify(players));
+                localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+
+                recalculateEverything();
+            };
+            r.readAsText(e.target.files[0]);
+        }
+
         function deleteMatch(id) { if(confirm("Delete?")) { matchHistory = matchHistory.filter(m=>m.id!==id); localStorage.setItem('padelHistory', JSON.stringify(matchHistory)); recalculateEverything(); } }
         function downloadData() { const b = new Blob([JSON.stringify({players, matchHistory})], {type:"application/json"}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `padel_data_v23.json`; a.click(); }
-        function uploadData(e) { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); players = d.players; matchHistory = d.matchHistory; recalculateEverything(); }; r.readAsText(e.target.files[0]); }
         function clearAttendance() { document.querySelectorAll('.attendee-check').forEach(c => c.checked = false); updateCounter(); }
     </script>
 </body>
