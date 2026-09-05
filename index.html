@@ -54,8 +54,17 @@
                 <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Attendance</h2>
-                        <button onclick="clearAttendance()" class="text-[10px] font-bold text-blue-400 hover:underline uppercase">Clear All</button>
+                        <button onclick="clearAttendance()" id="clearAttBtn" class="text-[10px] font-bold text-blue-400 hover:underline uppercase">Clear All</button>
                     </div>
+
+                    <div id="attendanceLockBanner" class="hidden mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span class="text-[10px] font-black text-blue-400 uppercase tracking-widest">Attendance Locked</span>
+                        </div>
+                        <button onclick="unlockSession()" class="text-[10px] font-black text-rose-400 hover:text-rose-300 uppercase transition bg-rose-500/10 px-2 py-1 rounded-lg">Unlock Match</button>
+                    </div>
+
                     <div id="attendeeList" class="space-y-1 max-h-80 overflow-y-auto pr-2 scrollbar-hide mb-4"></div>
                     
                     <div class="flex items-center justify-between mb-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-800">
@@ -69,6 +78,9 @@
                     <button onclick="generateSession()" id="genBtn" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black hover:bg-emerald-500 transition disabled:opacity-20 shadow-lg">
                         GENERATE SESSION
                     </button>
+                    <button onclick="lockCurrentSession()" id="lockBtn" class="hidden w-full mt-2 bg-blue-600 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-900/30">
+                        🔒 Lock Match & Start
+                    </button>
                     <div class="mt-4 text-[10px] text-center text-slate-500 font-bold uppercase"><span id="playerCount" class="text-emerald-400">0</span> Players Ready</div>
                 </section>
             </div>
@@ -76,14 +88,26 @@
             <div class="lg:col-span-8 space-y-6">
                 <div class="flex gap-6 border-b border-slate-800 px-2 overflow-x-auto scrollbar-hide">
                     <button onclick="switchTab('ranking')" id="tab-ranking" class="pb-3 text-sm font-bold border-b-2 border-blue-500 text-blue-500 whitespace-nowrap">Leaderboard</button>
+                    <button onclick="switchTab('schedule')" id="tab-schedule" class="pb-3 text-sm font-bold border-b-2 border-transparent text-slate-500 whitespace-nowrap">Current Match</button>
                     <button onclick="switchTab('history')" id="tab-history" class="pb-3 text-sm font-bold border-b-2 border-transparent text-slate-500 whitespace-nowrap">Match Logs</button>
-                    <button onclick="switchTab('schedule')" id="tab-schedule" class="pb-3 text-sm font-bold border-b-2 border-transparent text-slate-500 whitespace-nowrap">Schedule</button>
                 </div>
 
                 <section id="content-ranking" class="space-y-4">
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Season:</span>
+                            <select id="seasonFilterSelect" onchange="changeSeasonFilter(this.value)" class="bg-slate-800 border border-slate-700 text-xs font-bold text-white rounded-xl px-3 py-2 outline-none cursor-pointer">
+                            </select>
+                        </div>
+                        <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs font-bold">
+                            <button onclick="setLeaderboardView('rating')" id="btnViewRating" class="px-3 py-1.5 rounded-lg transition bg-blue-600 text-white shadow">Skill Rating</button>
+                            <button onclick="setLeaderboardView('wins')" id="btnViewWins" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">Wins Race</button>
+                        </div>
+                    </div>
+
                     <div class="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
                         <table class="w-full text-left">
-                            <thead>
+                            <thead id="leaderboardHead">
                                 <tr class="text-[10px] font-black uppercase text-slate-500 border-b border-slate-800 bg-slate-800/30">
                                     <th class="px-6 py-4">Player</th>
                                     <th class="px-4 py-4 text-center">Form</th>
@@ -96,12 +120,29 @@
                     </div>
                 </section>
 
+                <section id="content-schedule" class="hidden space-y-6">
+                    <div id="scheduleResults"></div>
+                </section>
+
                 <section id="content-history" class="hidden space-y-6">
+                    <div class="bg-slate-900 p-5 rounded-3xl border border-slate-800 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black uppercase text-amber-500 tracking-widest">Active Season:</span>
+                                <span id="activeSeasonBadge" class="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 font-black text-xs">Season 1</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Match history & seasonal progression</p>
+                        </div>
+                        <button onclick="startNewSeason()" id="startSeasonBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                            <span>🏆</span> <span id="startSeasonBtnText">Start Season 2</span>
+                        </button>
+                    </div>
+
                     <div id="loggerSection" class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl transition-all duration-300">
                         <div class="flex justify-between items-center mb-6">
                             <div>
-                                <h2 id="loggerTitle" class="text-xl font-black text-white tracking-tight">Log Match</h2>
-                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Enter results below</p>
+                                <h2 id="loggerTitle" class="text-xl font-black text-white tracking-tight">Manual Log Match</h2>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Enter ad-hoc results below</p>
                             </div>
                             <button id="cancelInsert" onclick="cancelInsertion()" class="hidden text-xs text-rose-400 font-bold px-3 py-1 bg-rose-400/10 rounded-lg">Cancel</button>
                         </div>
@@ -124,10 +165,6 @@
                         <button onclick="submitMatch()" class="w-full bg-white text-slate-950 py-4 rounded-2xl font-black hover:bg-slate-200 transition active:scale-95">SUBMIT RESULT</button>
                     </div>
                     <div id="historyList" class="space-y-4"></div>
-                </section>
-
-                <section id="content-schedule" class="hidden space-y-6">
-                    <div id="scheduleResults"></div>
                 </section>
             </div>
         </div>
@@ -181,9 +218,22 @@
     </div>
 
     <script>
+        // --- CONSTANTS ---
+        const ENABLE_RATING_DELTA = true;
+
+        // --- APPLICATION STATE ---
         let players = JSON.parse(localStorage.getItem('padelPlayers')) || [];
         let matchHistory = JSON.parse(localStorage.getItem('padelHistory')) || [];
+        let currentSession = JSON.parse(localStorage.getItem('padelCurrentSession')) || null;
+        let currentSeasonFilter = localStorage.getItem('padelSeasonFilter') || 'current';
+        let activeLeaderboardView = localStorage.getItem('padelLeaderboardView') || 'rating';
+
         let stats = {};
+        let allTimeStats = {};
+        let seasonStats = {};
+        let seasonBaselines = {};
+        let seasons = [1];
+        let activeSeason = 1;
 
         // ENGINE BOOTSTRAP
         const engineCheck = setInterval(() => {
@@ -193,69 +243,292 @@
                 document.getElementById('statusLight').classList.remove('animate-pulse');
                 document.getElementById('statusText').innerText = "Engine Live";
                 recalculateEverything();
+                renderAttendancePanel();
+                renderCurrentMatch();
             }
         }, 500);
 
         function recalculateEverything() {
             if (!window.openskill) return;
-            stats = {};
+
+            seasons = [1];
+            let currentSeason = 1;
+            seasonStats = { 1: {} };
+            seasonBaselines = { 1: {} };
+            allTimeStats = {};
+
             players.forEach(p => { 
                 p.rating = { mu: 25.0, sigma: 8.333 };
-                stats[p.name] = { wins: 0, losses: 0, form: [] };
+                allTimeStats[p.name] = { wins: 0, losses: 0, form: [] };
+                seasonStats[1][p.name] = { wins: 0, losses: 0, form: [] };
+                seasonBaselines[1][p.name] = 25.0 - 3 * 8.333;
             });
 
             matchHistory.forEach(m => {
+                // Check for season marker
+                if (m.isSeasonMarker || m.type === 'season_marker') {
+                    currentSeason = Number(m.season);
+                    if (!seasons.includes(currentSeason)) seasons.push(currentSeason);
+                    if (!seasonStats[currentSeason]) seasonStats[currentSeason] = {};
+                    if (!seasonBaselines[currentSeason]) seasonBaselines[currentSeason] = {};
+                    
+                    // Snapshot baseline ratings at start of this season
+                    players.forEach(p => {
+                        seasonBaselines[currentSeason][p.name] = p.rating.mu - 3 * p.rating.sigma;
+                        if (!seasonStats[currentSeason][p.name]) {
+                            seasonStats[currentSeason][p.name] = { wins: 0, losses: 0, form: [] };
+                        }
+                    });
+                    return;
+                }
+
+                if (!m.winners || !m.losers) return;
                 const teamA = m.winners.map(n => players.find(p => p.name === n)?.rating).filter(r => r);
                 const teamB = m.losers.map(n => players.find(p => p.name === n)?.rating).filter(r => r);
                 if (teamA.length && teamB.length) {
                     const updated = window.openskill.rate([teamA, teamB]);
                     m.winners.forEach((n, i) => { 
                         const p = players.find(x => x.name === n); if(p) p.rating = updated[0][i];
-                        if(stats[n]) { stats[n].wins++; stats[n].form.push('W'); }
+                        if (!allTimeStats[n]) allTimeStats[n] = { wins: 0, losses: 0, form: [] };
+                        allTimeStats[n].wins++; allTimeStats[n].form.push('W');
+
+                        if (!seasonStats[currentSeason]) seasonStats[currentSeason] = {};
+                        if (!seasonStats[currentSeason][n]) seasonStats[currentSeason][n] = { wins: 0, losses: 0, form: [] };
+                        seasonStats[currentSeason][n].wins++; seasonStats[currentSeason][n].form.push('W');
                     });
                     m.losers.forEach((n, i) => { 
                         const p = players.find(x => x.name === n); if(p) p.rating = updated[1][i];
-                        if(stats[n]) { stats[n].losses++; stats[n].form.push('L'); }
+                        if (!allTimeStats[n]) allTimeStats[n] = { wins: 0, losses: 0, form: [] };
+                        allTimeStats[n].losses++; allTimeStats[n].form.push('L');
+
+                        if (!seasonStats[currentSeason]) seasonStats[currentSeason] = {};
+                        if (!seasonStats[currentSeason][n]) seasonStats[currentSeason][n] = { wins: 0, losses: 0, form: [] };
+                        seasonStats[currentSeason][n].losses++; seasonStats[currentSeason][n].form.push('L');
                     });
                 }
             });
+
+            activeSeason = currentSeason;
+            seasons.sort((a, b) => a - b);
+
+            // Update active season badge in Match Logs
+            const badge = document.getElementById('activeSeasonBadge');
+            if (badge) badge.innerText = `Season ${activeSeason}`;
+            const btnText = document.getElementById('startSeasonBtnText');
+            if (btnText) btnText.innerText = `Start Season ${activeSeason + 1}`;
+
             render();
         }
 
         function render() {
-            const sorted = [...players].sort((a,b) => (b.rating.mu - 3*b.rating.sigma) - (a.rating.mu - 3*a.rating.sigma));
-            document.getElementById('leaderboardBody').innerHTML = sorted.map(p => {
+            // Resolve selected season filter
+            let selectedSeason = (currentSeasonFilter === 'all') ? 'all' :
+                                 (currentSeasonFilter === 'current' ? activeSeason : Number(currentSeasonFilter));
+            if (selectedSeason !== 'all' && !seasons.includes(selectedSeason)) {
+                selectedSeason = activeSeason;
+                currentSeasonFilter = 'current';
+            }
+
+            // Populate season filter select
+            const seasonSelect = document.getElementById('seasonFilterSelect');
+            if (seasonSelect) {
+                let sHtml = `<option value="current"${currentSeasonFilter === 'current' ? ' selected' : ''}>Season ${activeSeason} (Current)</option>`;
+                seasons.slice().reverse().forEach(s => {
+                    if (s !== activeSeason) {
+                        sHtml += `<option value="${s}"${currentSeasonFilter == s ? ' selected' : ''}>Season ${s}</option>`;
+                    }
+                });
+                sHtml += `<option value="all"${currentSeasonFilter === 'all' ? ' selected' : ''}>All Time</option>`;
+                seasonSelect.innerHTML = sHtml;
+            }
+
+            // Update view button styling
+            const btnRating = document.getElementById('btnViewRating');
+            const btnWins = document.getElementById('btnViewWins');
+            if (btnRating && btnWins) {
+                if (activeLeaderboardView === 'rating') {
+                    btnRating.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold shadow';
+                    btnWins.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold';
+                } else {
+                    btnWins.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold shadow';
+                    btnRating.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-bold';
+                }
+            }
+
+            // Determine active stats mapping based on filter
+            stats = {};
+            players.forEach(p => {
+                if (selectedSeason === 'all') {
+                    stats[p.name] = allTimeStats[p.name] || { wins: 0, losses: 0, form: [] };
+                } else {
+                    stats[p.name] = (seasonStats[selectedSeason] && seasonStats[selectedSeason][p.name]) || { wins: 0, losses: 0, form: [] };
+                }
+            });
+
+            // Table Header setup
+            const thead = document.getElementById('leaderboardHead');
+            const isAllTime = (selectedSeason === 'all');
+            const showDelta = ENABLE_RATING_DELTA && !isAllTime;
+
+            if (thead) {
+                if (activeLeaderboardView === 'rating') {
+                    thead.innerHTML = `
+                    <tr class="text-[10px] font-black uppercase text-slate-500 border-b border-slate-800 bg-slate-800/30">
+                        <th class="px-6 py-4">Player</th>
+                        <th class="px-4 py-4 text-center">Form</th>
+                        <th class="px-4 py-4 text-right">Rating</th>
+                        ${showDelta ? `<th class="px-4 py-4 text-center">Season Δ</th>` : ''}
+                        <th class="px-6 py-4 text-right">Conf.</th>
+                    </tr>`;
+                } else {
+                    thead.innerHTML = `
+                    <tr class="text-[10px] font-black uppercase text-slate-500 border-b border-slate-800 bg-slate-800/30">
+                        <th class="px-4 py-4 text-center w-12">#</th>
+                        <th class="px-6 py-4">Player</th>
+                        <th class="px-4 py-4 text-center">Record</th>
+                        <th class="px-4 py-4 text-right">Win %</th>
+                        <th class="px-6 py-4 text-right">Rating</th>
+                    </tr>`;
+                }
+            }
+
+            // Sorting
+            let sorted = [...players];
+            if (activeLeaderboardView === 'rating') {
+                sorted.sort((a,b) => (b.rating.mu - 3*b.rating.sigma) - (a.rating.mu - 3*a.rating.sigma));
+            } else {
+                sorted.sort((a, b) => {
+                    const sa = stats[a.name] || { wins: 0, losses: 0 };
+                    const sb = stats[b.name] || { wins: 0, losses: 0 };
+                    if (sb.wins !== sa.wins) return sb.wins - sa.wins;
+                    const pctA = (sa.wins + sa.losses) > 0 ? (sa.wins / (sa.wins + sa.losses)) : 0;
+                    const pctB = (sb.wins + sb.losses) > 0 ? (sb.wins / (sb.wins + sb.losses)) : 0;
+                    if (pctB !== pctA) return pctB - pctA;
+                    return (b.rating.mu - 3*b.rating.sigma) - (a.rating.mu - 3*a.rating.sigma);
+                });
+            }
+
+            // Leaderboard Body
+            document.getElementById('leaderboardBody').innerHTML = sorted.map((p, idx) => {
                 const s = stats[p.name] || { wins: 0, losses: 0, form: [] };
-                const winPct = (s.wins + s.losses) > 0 ? ((s.wins / (s.wins + s.losses)) * 100).toFixed(0) : 0;
+                const totalMatches = s.wins + s.losses;
+                const winPct = totalMatches > 0 ? ((s.wins / totalMatches) * 100).toFixed(0) : 0;
                 const formDots = s.form.slice(-5).map(r => `<span class="${r === 'W' ? 'win-dot' : 'loss-dot'}"></span>`).join('');
-                return `
-                <tr class="hover:bg-slate-800/50 transition">
-                    <td onclick="showPlayerDetails('${p.name}')" class="px-6 py-4 font-bold text-white cursor-pointer hover:text-blue-400 transition">
-                        ${p.name}
-                        <div class="text-[9px] text-slate-500 uppercase font-black">${s.wins}W - ${s.losses}L (${winPct}%)</div>
-                    </td>
-                    <td class="px-4 py-4 text-center"><div class="flex gap-0.5 justify-center">${formDots}</div></td>
-                    <td class="px-4 py-4 text-right font-mono text-blue-400 font-black">${(p.rating.mu - 3*p.rating.sigma).toFixed(2)}</td>
-                    <td class="px-6 py-4 text-right text-xs font-mono text-slate-600">±${(p.rating.sigma * 3).toFixed(1)}</td>
-                </tr>`;
+                const currentRatingVal = p.rating.mu - 3 * p.rating.sigma;
+
+                if (activeLeaderboardView === 'rating') {
+                    let deltaHtml = '';
+                    if (showDelta) {
+                        const baseline = (seasonBaselines[selectedSeason] && seasonBaselines[selectedSeason][p.name] !== undefined)
+                            ? seasonBaselines[selectedSeason][p.name]
+                            : currentRatingVal;
+                        const diff = currentRatingVal - baseline;
+                        if (totalMatches === 0) {
+                            deltaHtml = `<td class="px-4 py-4 text-center font-mono text-xs text-slate-600">—</td>`;
+                        } else if (diff > 0.005) {
+                            deltaHtml = `<td class="px-4 py-4 text-center font-mono text-xs font-black text-emerald-400 bg-emerald-500/5 rounded-xl">+${diff.toFixed(2)} ↗</td>`;
+                        } else if (diff < -0.005) {
+                            deltaHtml = `<td class="px-4 py-4 text-center font-mono text-xs font-black text-rose-400 bg-rose-500/5 rounded-xl">${diff.toFixed(2)} ↘</td>`;
+                        } else {
+                            deltaHtml = `<td class="px-4 py-4 text-center font-mono text-xs text-slate-500 font-bold">= 0.00</td>`;
+                        }
+                    }
+
+                    return `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td onclick="showPlayerDetails('${p.name}')" class="px-6 py-4 font-bold text-white cursor-pointer hover:text-blue-400 transition">
+                            ${p.name}
+                            <div class="text-[9px] text-slate-500 uppercase font-black">${s.wins}W - ${s.losses}L (${winPct}%)</div>
+                        </td>
+                        <td class="px-4 py-4 text-center"><div class="flex gap-0.5 justify-center">${formDots || '<span class="text-slate-700 text-xs font-mono">—</span>'}</div></td>
+                        <td class="px-4 py-4 text-right font-mono text-blue-400 font-black">${currentRatingVal.toFixed(2)}</td>
+                        ${deltaHtml}
+                        <td class="px-6 py-4 text-right text-xs font-mono text-slate-600">±${(p.rating.sigma * 3).toFixed(1)}</td>
+                    </tr>`;
+                } else {
+                    const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : idx + 1));
+                    return `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="px-4 py-4 text-center font-mono font-bold text-slate-400 text-xs">${medal}</td>
+                        <td onclick="showPlayerDetails('${p.name}')" class="px-6 py-4 font-bold text-white cursor-pointer hover:text-blue-400 transition">
+                            ${p.name}
+                        </td>
+                        <td class="px-4 py-4 text-center font-mono text-xs font-bold text-white">
+                            <span class="text-emerald-400">${s.wins}W</span> - <span class="text-rose-400">${s.losses}L</span>
+                        </td>
+                        <td class="px-4 py-4 text-right font-mono text-xs font-bold ${winPct >= 50 ? 'text-emerald-400' : 'text-slate-400'}">
+                            ${totalMatches > 0 ? winPct + '%' : '—'}
+                        </td>
+                        <td class="px-6 py-4 text-right font-mono text-blue-400 text-xs font-bold">
+                            ${currentRatingVal.toFixed(2)}
+                        </td>
+                    </tr>`;
+                }
             }).join('');
 
+            // Dropdown select options in manual logger
             const alpha = [...players].sort((a,b) => a.name.localeCompare(b.name));
             const opts = '<option value="">- Select -</option>' + alpha.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
             ['p1', 'p2', 'p3', 'p4'].forEach(id => { const el = document.getElementById(id); if(el) { const v = el.value; el.innerHTML = opts; el.value = v; } });
 
+            // Render attendance panel
+            renderAttendancePanel();
+
+            // Render match logs with season dividers
+            renderMatchHistoryList();
+        }
+
+        function renderAttendancePanel() {
+            const alpha = [...players].sort((a,b) => a.name.localeCompare(b.name));
+            const isLocked = currentSession && currentSession.isLocked;
+            const hasPreview = currentSession && !currentSession.isLocked && !currentSession.isCompleted;
+
+            // Lock banner
+            const lockBanner = document.getElementById('attendanceLockBanner');
+            if (lockBanner) {
+                if (isLocked) lockBanner.classList.remove('hidden');
+                else lockBanner.classList.add('hidden');
+            }
+
+            // Lock button in attendance panel
+            const lockBtn = document.getElementById('lockBtn');
+            if (lockBtn) {
+                if (hasPreview) lockBtn.classList.remove('hidden');
+                else lockBtn.classList.add('hidden');
+            }
+
+            // Generate button state
+            const genBtn = document.getElementById('genBtn');
+            if (genBtn) {
+                if (isLocked) {
+                    genBtn.disabled = true;
+                    genBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                } else {
+                    genBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+                }
+            }
+
+            // Clear attendance button
+            const clearBtn = document.getElementById('clearAttBtn');
+            if (clearBtn) {
+                clearBtn.disabled = isLocked;
+                if (isLocked) clearBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                else clearBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+            }
+
+            // Render attendees
             document.getElementById('attendeeList').innerHTML = alpha.map(p => {
-                // Check if player has played any matches
-                const hasMatches = matchHistory.some(m => m.winners.includes(p.name) || m.losers.includes(p.name));
+                const hasMatches = matchHistory.some(m => !m.isSeasonMarker && (m.winners?.includes(p.name) || m.losers?.includes(p.name)));
+                const isChecked = currentSession && currentSession.attendees && currentSession.attendees.includes(p.name);
 
                 return `
-                <div class="flex items-center justify-between p-3 hover:bg-slate-800 rounded-2xl transition group">
-                    <label class="flex items-center gap-3 cursor-pointer flex-1">
-                        <input type="checkbox" onchange="updateCounter()" class="attendee-check w-5 h-5 rounded-lg border-slate-700 bg-slate-800 text-blue-500 focus:ring-0" value="${p.name}">
+                <div class="flex items-center justify-between p-3 hover:bg-slate-800 rounded-2xl transition group ${isLocked ? 'opacity-70' : ''}">
+                    <label class="flex items-center gap-3 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} flex-1">
+                        <input type="checkbox" onchange="updateCounter()" ${isLocked ? 'disabled' : ''} ${isChecked ? 'checked' : ''} class="attendee-check w-5 h-5 rounded-lg border-slate-700 bg-slate-800 text-blue-500 focus:ring-0 ${isLocked ? 'cursor-not-allowed opacity-60' : ''}" value="${p.name}">
                         <span class="text-sm font-bold text-slate-300">${p.name}</span>
                     </label>
                     
-                    ${!hasMatches ? `
+                    ${(!hasMatches && !isLocked) ? `
                         <button onclick="deletePlayer('${p.name}')" class="opacity-0 group-hover:opacity-100 text-[10px] font-black text-rose-500 hover:text-rose-400 transition px-2">
                             REMOVE
                         </button>
@@ -263,26 +536,395 @@
                 </div>`;
             }).join('');
 
-            let h = '';
-            [...matchHistory].reverse().forEach((m, idx) => {
-                const oIdx = matchHistory.length - 1 - idx;
-                h += `
-                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center group shadow-lg">
-                    <div class="flex gap-4 items-center">
-                        <div class="text-[10px] font-black text-slate-700 w-6">#${oIdx+1}</div>
-                        <div class="text-sm font-bold text-slate-300"><span class="text-emerald-400">${m.winners.join(' & ')}</span> <span class="text-slate-600 font-normal mx-1">def.</span> <span class="text-slate-400">${m.losers.join(' & ')}</span></div>
+            updateCounter();
+        }
+
+        function renderCurrentMatch() {
+            const container = document.getElementById('scheduleResults');
+            if (!container) return;
+
+            if (!currentSession || !currentSession.schedule || currentSession.schedule.length === 0) {
+                container.innerHTML = `
+                <div class="bg-slate-900 p-12 rounded-3xl border border-slate-800 text-center shadow-xl">
+                    <div class="w-16 h-16 rounded-3xl bg-blue-600/10 text-blue-400 flex items-center justify-center mx-auto mb-4 border border-blue-500/20 text-2xl">
+                        🎾
                     </div>
-                    <button onclick="deleteMatch(${m.id})" class="text-slate-700 hover:text-rose-500 font-black text-[10px] transition">DELETE</button>
+                    <h3 class="text-lg font-black text-white">No Active Session</h3>
+                    <p class="text-xs text-slate-400 mt-2 max-w-sm mx-auto">Select at least 4 players from Attendance on the left and click <span class="text-emerald-400 font-bold">"GENERATE SESSION"</span> to create pairings.</p>
+                </div>`;
+                return;
+            }
+
+            const { isLocked, isCompleted, pairs, schedule } = currentSession;
+
+            // Generate text for sharing
+            let textToShare = `🎾 PADEL SESSION 🎾\n\nTEAMS:\n`;
+            pairs.forEach((p, i) => textToShare += `${i+1}. ${p.names.join(' & ')} (Skill: ${p.skill.toFixed(1)})\n`);
+            schedule.forEach((rd, i) => {
+                textToShare += `\nROUND ${i+1}\n`;
+                if(rd.sideline) textToShare += `RESTING: ${rd.sideline.names.join(' & ')}\n`;
+                rd.matches.forEach((m, ci) => {
+                    const t1 = m.team1 || m[0];
+                    const t2 = m.team2 || m[1];
+                    textToShare += `Court ${ci+1}: ${t1.names.join(' & ')} vs ${t2.names.join(' & ')}\n`;
+                });
+            });
+
+            // Count scored matches
+            let scoredCount = 0;
+            schedule.forEach(rd => {
+                rd.matches.forEach(m => {
+                    if (m.winner === 0 || m.winner === 1) scoredCount++;
+                });
+            });
+
+            let html = `
+                <!-- Status Banner & Controls -->
+                <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 mb-6 shadow-2xl relative">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            ${isLocked ? `
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span class="text-xs font-black uppercase text-emerald-400 tracking-widest">Active Match Session</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Tap the winning team on each court below, then click Submit Results.</p>
+                            ` : (isCompleted ? `
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                    <span class="text-xs font-black uppercase text-blue-400 tracking-widest">Completed Session</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Results logged. Match stays visible here until next session generation.</p>
+                            ` : `
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    <span class="text-xs font-black uppercase text-amber-400 tracking-widest">Session Preview</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Re-generate anytime. Click "Lock Match" when ready to begin scoring.</p>
+                            `)}
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="shareSchedule('${encodeURIComponent(textToShare)}')" 
+                                    class="bg-slate-800 hover:bg-slate-700 text-[10px] font-black px-4 py-2.5 rounded-xl text-slate-200 border border-slate-700 active:scale-95 transition-all">
+                                SHARE TEXT
+                            </button>
+                            ${(!isLocked && !isCompleted) ? `
+                                <button onclick="lockCurrentSession()" 
+                                        class="bg-blue-600 hover:bg-blue-500 text-[10px] font-black px-4 py-2.5 rounded-xl text-white shadow-lg shadow-blue-900/30 active:scale-95 transition-all flex items-center gap-1.5">
+                                    <span>🔒</span> LOCK MATCH & START
+                                </button>
+                            ` : ''}
+                            ${isLocked ? `
+                                <button onclick="clearWinnerSelections()" 
+                                        class="bg-slate-800 hover:bg-slate-700 text-[10px] font-black px-3.5 py-2.5 rounded-xl text-slate-300 border border-slate-700 active:scale-95 transition-all">
+                                    CLEAR PICKS
+                                </button>
+                                <button onclick="unlockSession()" 
+                                        class="bg-rose-500/10 hover:bg-rose-500/20 text-[10px] font-black px-3.5 py-2.5 rounded-xl text-rose-400 border border-rose-500/20 active:scale-95 transition-all">
+                                    UNLOCK
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Compositions -->
+                <div class="bg-slate-900 p-6 pb-8 rounded-3xl border border-slate-800 mb-8 shadow-2xl">
+                    <h2 class="text-xs font-black uppercase text-blue-500 tracking-[0.2em] mb-4">Team Compositions</h2>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${pairs.map((p, i) => `
+                        <div class="p-3.5 bg-slate-800/50 border border-slate-800 rounded-2xl flex justify-between items-center">
+                            <div>
+                                <span class="text-[9px] text-slate-500 font-bold uppercase">Team ${i+1}</span>
+                                <p class="text-sm font-bold text-white">${p.names.join(' & ')}</p>
+                            </div>
+                            <div class="text-right font-mono text-blue-400 text-[10px] bg-blue-400/10 px-2 py-1 rounded-lg">
+                                ${p.skill.toFixed(1)}
+                            </div>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+
+            // Rounds
+            schedule.forEach((rd, roundIdx) => {
+                html += `
+                <div class="mb-10 group">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-md">ROUND ${roundIdx+1}</span>
+                        <div class="h-px bg-slate-800 flex-1"></div>
+                    </div>
+
+                    ${rd.sideline ? `
+                    <div class="mb-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-amber-500 font-black uppercase tracking-widest">Sideline / Rest</span>
+                            <span class="text-sm font-bold text-amber-200">${rd.sideline.names.join(' & ')}</span>
+                        </div>
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    </div>` : ''}
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        ${rd.matches.map((m, matchIdx) => {
+                            const t1 = m.team1 || m[0];
+                            const t2 = m.team2 || m[1];
+                            const w = m.winner;
+
+                            let t1Classes = "bg-slate-800/60 border-slate-700/60";
+                            let t2Classes = "bg-slate-800/60 border-slate-700/60";
+                            let t1Badge = "";
+                            let t2Badge = "";
+
+                            if (w === 0) {
+                                t1Classes = "bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500 shadow-md shadow-emerald-950/40";
+                                t2Classes = "bg-slate-800/40 border-slate-800 opacity-50";
+                                t1Badge = `<span class="text-[9px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded">WINNER</span>`;
+                            } else if (w === 1) {
+                                t1Classes = "bg-slate-800/40 border-slate-800 opacity-50";
+                                t2Classes = "bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500 shadow-md shadow-emerald-950/40";
+                                t2Badge = `<span class="text-[9px] font-black uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded">WINNER</span>`;
+                            } else if (isLocked) {
+                                t1Classes += " hover:border-blue-500 hover:bg-slate-800 cursor-pointer";
+                                t2Classes += " hover:border-blue-500 hover:bg-slate-800 cursor-pointer";
+                            }
+
+                            const clickT1 = isLocked ? `onclick="selectMatchWinner(${roundIdx}, ${matchIdx}, 0)"` : '';
+                            const clickT2 = isLocked ? `onclick="selectMatchWinner(${roundIdx}, ${matchIdx}, 1)"` : '';
+
+                            return `
+                            <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col gap-3">
+                                <div class="flex justify-between items-center text-[10px] font-black uppercase text-slate-500">
+                                    <span>Court ${matchIdx + 1}</span>
+                                    <span>${w !== null && w !== undefined ? (isCompleted ? 'Finished' : 'Scored') : (isLocked ? 'Tap Winner' : 'Pending')}</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div ${clickT1} class="p-3.5 rounded-xl border transition select-none ${t1Classes}">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-bold text-white">${t1.names.join(' & ')}</span>
+                                            ${t1Badge}
+                                        </div>
+                                    </div>
+                                    <div ${clickT2} class="p-3.5 rounded-xl border transition select-none ${t2Classes}">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-bold text-white">${t2.names.join(' & ')}</span>
+                                            ${t2Badge}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
                 </div>`;
             });
-            document.getElementById('historyList').innerHTML = h;
-            updateCounter();
+
+            // Action submit bar if locked
+            if (isLocked) {
+                html += `
+                <div class="mt-8 p-6 bg-slate-900 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+                    <div>
+                        <h3 class="text-base font-black text-white">Submit Session Results</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">${scoredCount} match(es) scored. Submitting will record results to Season ${activeSeason} and update ratings.</p>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button onclick="clearWinnerSelections()" class="flex-1 sm:flex-none px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+                            Clear Picks
+                        </button>
+                        <button onclick="submitSessionResults()" class="flex-1 sm:flex-none px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/30 active:scale-95 transition">
+                            SUBMIT RESULTS (${scoredCount})
+                        </button>
+                    </div>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderMatchHistoryList() {
+            let h = '';
+            [...matchHistory].reverse().forEach((m) => {
+                if (m.isSeasonMarker || m.type === 'season_marker') {
+                    h += `
+                    <div class="my-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 flex justify-between items-center shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">🏆</span>
+                            <div>
+                                <h3 class="text-sm font-black text-amber-300 uppercase tracking-widest">Season ${m.season} Started</h3>
+                                <span class="text-[10px] text-slate-400 font-bold">${m.timestamp || ''}</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteMatch(${m.id})" class="text-slate-500 hover:text-rose-400 font-bold text-[10px] uppercase transition px-2 py-1">Delete Marker</button>
+                    </div>`;
+                } else {
+                    const regularMatches = matchHistory.filter(x => !x.isSeasonMarker && x.type !== 'season_marker');
+                    const originalIdx = regularMatches.indexOf(m);
+                    const seasonNum = m.season || 1;
+                    h += `
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center group shadow-lg">
+                        <div class="flex gap-4 items-center">
+                            <div class="text-[10px] font-black text-slate-600 w-7">#${originalIdx + 1}</div>
+                            <div>
+                                <div class="text-sm font-bold text-slate-300">
+                                    <span class="text-emerald-400">${m.winners.join(' & ')}</span>
+                                    <span class="text-slate-600 font-normal mx-1">def.</span>
+                                    <span class="text-slate-400">${m.losers.join(' & ')}</span>
+                                </div>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="text-[9px] font-bold text-amber-500/80 bg-amber-500/10 px-1.5 py-0.5 rounded">Season ${seasonNum}</span>
+                                    ${m.timestamp ? `<span class="text-[9px] text-slate-600 font-mono">${m.timestamp}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="deleteMatch(${m.id})" class="text-slate-700 hover:text-rose-500 font-black text-[10px] transition">DELETE</button>
+                    </div>`;
+                }
+            });
+
+            document.getElementById('historyList').innerHTML = h || '<div class="text-center py-8 text-slate-600 font-bold text-xs uppercase tracking-widest">No matches logged yet</div>';
+        }
+
+        function changeSeasonFilter(val) {
+            currentSeasonFilter = val;
+            localStorage.setItem('padelSeasonFilter', val);
+            recalculateEverything();
+        }
+
+        function setLeaderboardView(v) {
+            activeLeaderboardView = v;
+            localStorage.setItem('padelLeaderboardView', v);
+            render();
+        }
+
+        function selectMatchWinner(roundIdx, matchIdx, teamIdx) {
+            if (!currentSession || !currentSession.isLocked) return;
+            const match = currentSession.schedule[roundIdx].matches[matchIdx];
+            if (!match) return;
+
+            // Toggle winner off if already selected
+            if (match.winner === teamIdx) {
+                match.winner = null;
+            } else {
+                match.winner = teamIdx;
+            }
+
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            renderCurrentMatch();
+        }
+
+        function clearWinnerSelections() {
+            if (!currentSession || !currentSession.isLocked) return;
+            currentSession.schedule.forEach(rd => {
+                rd.matches.forEach(m => {
+                    m.winner = null;
+                });
+            });
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            renderCurrentMatch();
+        }
+
+        function lockCurrentSession() {
+            if (!currentSession) return;
+            currentSession.isLocked = true;
+            currentSession.isCompleted = false;
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            renderAttendancePanel();
+            renderCurrentMatch();
+            switchTab('schedule');
+        }
+
+        function unlockSession() {
+            if (!currentSession) return;
+            currentSession.isLocked = false;
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            renderAttendancePanel();
+            renderCurrentMatch();
+        }
+
+        function submitSessionResults() {
+            if (!currentSession || !currentSession.isLocked) return;
+
+            let scoredMatches = [];
+            currentSession.schedule.forEach(rd => {
+                rd.matches.forEach(m => {
+                    const t1 = m.team1 || m[0];
+                    const t2 = m.team2 || m[1];
+                    if (m.winner === 0) {
+                        scoredMatches.push({
+                            winners: t1.names.filter(n => n !== 'BYE'),
+                            losers: t2.names.filter(n => n !== 'BYE')
+                        });
+                    } else if (m.winner === 1) {
+                        scoredMatches.push({
+                            winners: t2.names.filter(n => n !== 'BYE'),
+                            losers: t1.names.filter(n => n !== 'BYE')
+                        });
+                    }
+                });
+            });
+
+            if (scoredMatches.length === 0) {
+                unlockSession();
+                alert("No winners were selected. Session unlocked and returned to attendance.");
+                return;
+            }
+
+            if (!confirm(`Submit ${scoredMatches.length} match result(s) to Season ${activeSeason}?`)) {
+                return;
+            }
+
+            const now = Date.now();
+            const timestampStr = new Date().toLocaleString();
+
+            scoredMatches.forEach((sm, idx) => {
+                matchHistory.push({
+                    id: now + idx,
+                    timestamp: timestampStr,
+                    winners: sm.winners,
+                    losers: sm.losers,
+                    season: activeSeason
+                });
+            });
+
+            currentSession.isLocked = false;
+            currentSession.isCompleted = true;
+
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+
+            recalculateEverything();
+            renderAttendancePanel();
+            renderCurrentMatch();
+
+            alert(`Logged ${scoredMatches.length} match(es) successfully! Ratings and season stats updated.`);
+        }
+
+        function startNewSeason() {
+            const nextSeason = activeSeason + 1;
+            if (!confirm(`Start Season ${nextSeason}? Subsequent match results will belong to Season ${nextSeason}.`)) {
+                return;
+            }
+
+            matchHistory.push({
+                id: Date.now(),
+                isSeasonMarker: true,
+                type: 'season_marker',
+                season: nextSeason,
+                timestamp: new Date().toLocaleString()
+            });
+
+            currentSeasonFilter = 'current';
+            localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+            localStorage.setItem('padelSeasonFilter', 'current');
+            recalculateEverything();
+            switchTab('history');
         }
 
         function updateCounter() {
             const c = document.querySelectorAll('.attendee-check:checked').length;
             document.getElementById('playerCount').innerText = c;
-            document.getElementById('genBtn').disabled = (c < 4);
+            const genBtn = document.getElementById('genBtn');
+            if (genBtn && (!currentSession || !currentSession.isLocked)) {
+                genBtn.disabled = (c < 4);
+            }
         }
 
         function showPlayerDetails(name) {
@@ -293,6 +935,7 @@
             let recentForm = [];
 
             matchHistory.forEach(m => {
+                if (m.isSeasonMarker || m.type === 'season_marker' || !m.winners || !m.losers) return;
                 const win = m.winners.includes(name);
                 const loss = m.losers.includes(name);
 
@@ -300,40 +943,32 @@
                     currentStreak++;
                     if (currentStreak > maxStreak) maxStreak = currentStreak;
                     recentForm.push('W');
-                    // Logic: If we won, my partner gets +1 "Soulmate" point
                     m.winners.filter(n => n !== name).forEach(p => {
                         partners[p] = (partners[p] || 0) + 1;
                     });
                 } else if (loss) {
                     currentStreak = 0;
                     recentForm.push('L');
-                    // Logic: If we lost, everyone on the winning team gets +1 "Nemesis" point
                     m.winners.forEach(o => {
                         opponents[o] = (opponents[o] || 0) + 1;
                     });
                 }
             });
 
-            // Sort to find the top partner and top opponent
             const soulmateArr = Object.entries(partners).sort((a,b) => b[1] - a[1]);
             const nemesisArr = Object.entries(opponents).sort((a,b) => b[1] - a[1]);
 
-            // Update Modal Content
             document.getElementById('modalName').innerText = name;
             document.getElementById('streakCount').innerText = `${maxStreak} ${maxStreak === 1 ? 'Match' : 'Matches'}`;
             
-            // Soulmate: Show if they have at least 1 win together
             document.getElementById('soulmateName').innerText = (soulmateArr.length > 0 && soulmateArr[0][1] > 0) 
                 ? soulmateArr[0][0] 
                 : 'No wins yet';
 
-            // Nemesis: Only show if someone has beaten you MORE than once (> 1)
-            // This addresses your "no repeated matchups" point perfectly.
             document.getElementById('nemesisName').innerText = (nemesisArr.length > 0 && nemesisArr[0][1] > 1) 
                 ? nemesisArr[0][0] 
                 : 'No rivals yet';
             
-            // Form Dots
             const formHtml = recentForm.slice(-5).map(r => 
                 `<span class="w-2.5 h-2.5 rounded-full ${r === 'W' ? 'bg-emerald-500' : 'bg-rose-500'}"></span>`
             ).join('');
@@ -346,7 +981,7 @@
             if (confirm(`Are you sure you want to remove ${name}?`)) {
                 players = players.filter(p => p.name !== name);
                 localStorage.setItem('padelPlayers', JSON.stringify(players));
-                recalculateEverything(); // Re-runs calculations and re-renders the UI
+                recalculateEverything();
             }
         }
 
@@ -358,21 +993,35 @@
             const w = [document.getElementById('p1').value, document.getElementById('p2').value].filter(x=>x);
             const l = [document.getElementById('p3').value, document.getElementById('p4').value].filter(x=>x);
             if (w.length < 2 || l.length < 2) return alert("Select 4 players");
-            const m = { id: Date.now(), winners: w, losers: l };
+            const m = { 
+                id: Date.now(), 
+                timestamp: new Date().toLocaleString(),
+                winners: w, 
+                losers: l,
+                season: activeSeason
+            };
             matchHistory.push(m);
             localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
             recalculateEverything();
         }
 
         function switchTab(t) {
-            ['ranking', 'history', 'schedule'].forEach(x => {
-                document.getElementById(`content-${x}`).classList.add('hidden');
-                document.getElementById(`tab-${x}`).classList.replace('border-blue-500', 'border-transparent');
-                document.getElementById(`tab-${x}`).classList.replace('text-blue-500', 'text-slate-500');
+            ['ranking', 'schedule', 'history'].forEach(x => {
+                const c = document.getElementById(`content-${x}`);
+                const tab = document.getElementById(`tab-${x}`);
+                if (c) c.classList.add('hidden');
+                if (tab) {
+                    tab.classList.replace('border-blue-500', 'border-transparent');
+                    tab.classList.replace('text-blue-500', 'text-slate-500');
+                }
             });
-            document.getElementById(`content-${t}`).classList.remove('hidden');
-            document.getElementById(`tab-${t}`).classList.replace('border-transparent', 'border-blue-500');
-            document.getElementById(`tab-${t}`).classList.replace('text-slate-500', 'text-blue-500');
+            const activeC = document.getElementById(`content-${t}`);
+            const activeTab = document.getElementById(`tab-${t}`);
+            if (activeC) activeC.classList.remove('hidden');
+            if (activeTab) {
+                activeTab.classList.replace('border-transparent', 'border-blue-500');
+                activeTab.classList.replace('text-slate-500', 'text-blue-500');
+            }
         }
 
         function addPlayer() { 
@@ -383,53 +1032,46 @@
             } 
         }
 
-        // CORE ENGINE v23
+        // CORE ENGINE v24 (Preview & Lock)
         function generateSession() {
             const names = Array.from(document.querySelectorAll('.attendee-check:checked')).map(cb => cb.value);
             const isRandom = document.getElementById('randomToggle').checked;
             
             let attendees = players.filter(p => names.includes(p.name));
-            attendees.sort((a,b) => b.rating.mu - a.rating.mu); // Ranked 1 to N
+            if (attendees.length < 4) return alert("Select at least 4 players");
+            attendees.sort((a,b) => b.rating.mu - a.rating.mu);
 
             let pairs = [];
 
             if (isRandom && attendees.length >= 4) {
-                // --- OPT-IN: 4-BUCKET JITTER ---
                 const size = attendees.length;
                 const qSize = Math.floor(size / 4);
                 
-                // Divide into 4 Quartiles
                 let q1 = attendees.slice(0, qSize);
                 let q2 = attendees.slice(qSize, qSize * 2);
                 let q3 = attendees.slice(qSize * 2, qSize * 3);
                 let q4 = attendees.slice(qSize * 3);
 
-                // Shuffle within buckets to create variety
                 const shuffle = (arr) => arr.sort(() => Math.random() - 0.5);
                 [q1, q2, q3, q4].forEach(shuffle);
 
-                // Pair Q1 with Q4 (Elite + Developing)
                 while(q1.length > 0 && q4.length > 0) {
                     let p1 = q1.shift();
                     let p2 = q4.shift();
                     pairs.push(createTeam(p1, p2));
                 }
-                // Pair Q2 with Q3 (Strong + Average)
                 while(q2.length > 0 && q3.length > 0) {
                     let p1 = q2.shift();
                     let p2 = q3.shift();
                     pairs.push(createTeam(p1, p2));
                 }
-                // Handle remainders (if count not divisible by 4)
                 let leftovers = [...q1, ...q2, ...q3, ...q4];
                 while(leftovers.length > 0) {
                     let p1 = leftovers.shift();
-                    let p2 = leftovers.shift(); // Might be undefined
+                    let p2 = leftovers.shift();
                     pairs.push(createTeam(p1, p2));
                 }
-
             } else {
-                // --- DEFAULT: MATHEMATICAL BEST (Anchor Pairing) ---
                 let temp = [...attendees];
                 while(temp.length > 0) { 
                     let hi = temp.shift(); 
@@ -438,7 +1080,6 @@
                 }
             }
 
-            // Helper to format team object
             function createTeam(p1, p2) {
                 return {
                     id: Math.random().toString(36).substr(2,5),
@@ -447,7 +1088,6 @@
                 };
             }
 
-            // Priority 2: Matchups (Sort teams by skill and find closest neighbor opponents)
             pairs.sort((a, b) => b.skill - a.skill);
 
             let totalRounds = (pairs.length % 2 !== 0) ? pairs.length : 3;
@@ -471,7 +1111,11 @@
                         
                         if (!globalTracker.has(key)) {
                             globalTracker.add(key); 
-                            roundMatches.push([pairs[pIdx], pairs[j]]);
+                            roundMatches.push({
+                                team1: pairs[pIdx],
+                                team2: pairs[j],
+                                winner: null
+                            });
                             usedIndices.add(pIdx); 
                             usedIndices.add(j);
                             if (solve(pIdx + 1)) return true;
@@ -485,68 +1129,20 @@
                 }
                 if (solve(0)) finalSchedule.push({ matches: roundMatches, sideline });
             }
-            renderSchedule(finalSchedule, totalRounds, pairs);
-        }
 
-        function renderSchedule(schedule, totalRounds, pairs) {
-            let textToShare = `🎾 PADEL SESSION 🎾\n\nTEAMS:\n`;
-            pairs.forEach((p, i) => textToShare += `${i+1}. ${p.names.join(' & ')} (Skill: ${p.skill.toFixed(1)})\n`);
-            
-            schedule.forEach((rd, i) => {
-                textToShare += `\nROUND ${i+1}\n`;
-                if(rd.sideline) textToShare += `RESTING: ${rd.sideline.names.join(' & ')}\n`;
-                rd.matches.forEach((m, ci) => textToShare += `Court ${ci+1}: ${m[0].names.join(' & ')} vs ${m[1].names.join(' & ')}\n`);
-            });
+            currentSession = {
+                isLocked: false,
+                isCompleted: false,
+                pairs: pairs,
+                schedule: finalSchedule,
+                totalRounds: totalRounds,
+                attendees: names,
+                generatedAt: Date.now()
+            };
+            localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
 
-            let html = `
-                <div class="bg-slate-900 p-6 pb-10 rounded-3xl border border-slate-800 mb-10 relative shadow-2xl">
-                    <button onclick="shareSchedule('${encodeURIComponent(textToShare)}')" 
-                            class="absolute top-6 right-6 bg-blue-600 text-[10px] font-black px-4 py-2 rounded-xl text-white shadow-lg active:scale-95 transition-all">
-                        SHARE TEXT
-                    </button>
-                    
-                    <h2 class="text-xs font-black uppercase text-blue-500 tracking-[0.2em] mb-6">Team Compositions</h2>
-                    
-                    <div class="grid md:grid-cols-3 gap-3 mb-2">
-                        ${pairs.map((p, i) => `
-                        <div class="p-3 bg-slate-800/50 border border-slate-800 rounded-2xl flex justify-between items-center">
-                            <div>
-                                <span class="text-[9px] text-slate-500 font-bold uppercase">Team ${i+1}</span>
-                                <p class="text-sm font-bold text-white">${p.names.join(' & ')}</p>
-                            </div>
-                            <div class="text-right font-mono text-blue-400 text-[10px] bg-blue-400/10 px-2 py-1 rounded-lg">
-                                ${p.skill.toFixed(1)}
-                            </div>
-                        </div>`).join('')}
-                    </div>
-                </div>`;
-
-            schedule.forEach((rd, i) => {
-                html += `
-                <div class="mb-10 group">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-md">ROUND ${i+1}</span>
-                        <div class="h-px bg-slate-800 flex-1"></div>
-                    </div>
-                    ${rd.sideline ? `
-                    <div class="mb-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <span class="text-[10px] text-amber-500 font-black uppercase tracking-widest">Sideline</span>
-                            <span class="text-sm font-bold text-amber-200">${rd.sideline.names.join(' & ')}</span>
-                        </div>
-                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                    </div>` : ''}
-                    <div class="grid md:grid-cols-2 gap-4">
-                        ${rd.matches.map((m, ci) => `
-                        <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center hover:border-blue-500/50 transition shadow-lg">
-                            <div class="flex flex-col"><span class="text-[9px] text-slate-500 font-bold uppercase mb-1">Court ${ci+1}</span><span class="font-bold text-white text-sm">${m[0].names.join(' & ')}</span></div>
-                            <div class="text-[10px] font-black text-slate-700 italic px-4">VS</div>
-                            <div class="flex flex-col text-right"><span class="text-[9px] text-slate-500 font-bold uppercase mb-1 invisible">Court ${ci+1}</span><span class="font-bold text-white text-sm">${m[1].names.join(' & ')}</span></div>
-                        </div>`).join('')}
-                    </div>
-                </div>`;
-            });
-            document.getElementById('scheduleResults').innerHTML = html;
+            renderAttendancePanel();
+            renderCurrentMatch();
             switchTab('schedule');
         }
 
@@ -559,22 +1155,66 @@
         function uploadData(e) {
             const r = new FileReader();
             r.onload = (ev) => {
-                const d = JSON.parse(ev.target.result);
-                players = d.players || [];
-                matchHistory = d.matchHistory || [];
+                try {
+                    const d = JSON.parse(ev.target.result);
+                    players = d.players || [];
+                    matchHistory = d.matchHistory || [];
+                    currentSession = d.currentSession || null;
 
-                // ✅ UPDATE LOCALSTORAGE IMMEDIATELY
-                localStorage.setItem('padelPlayers', JSON.stringify(players));
-                localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+                    localStorage.setItem('padelPlayers', JSON.stringify(players));
+                    localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+                    if (currentSession) {
+                        localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+                    } else {
+                        localStorage.removeItem('padelCurrentSession');
+                    }
 
-                recalculateEverything();
+                    recalculateEverything();
+                    renderAttendancePanel();
+                    renderCurrentMatch();
+                    alert("Data restored successfully!");
+                } catch (err) {
+                    alert("Error restoring data: " + err.message);
+                }
             };
             r.readAsText(e.target.files[0]);
         }
 
-        function deleteMatch(id) { if(confirm("Delete?")) { matchHistory = matchHistory.filter(m=>m.id!==id); localStorage.setItem('padelHistory', JSON.stringify(matchHistory)); recalculateEverything(); } }
-        function downloadData() { const b = new Blob([JSON.stringify({players, matchHistory})], {type:"application/json"}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `padel_data_v23.json`; a.click(); }
-        function clearAttendance() { document.querySelectorAll('.attendee-check').forEach(c => c.checked = false); updateCounter(); }
+        function deleteMatch(id) {
+            const item = matchHistory.find(m => m.id === id);
+            const isMarker = item && (item.isSeasonMarker || item.type === 'season_marker');
+            const promptMsg = isMarker ? `Delete marker for Season ${item.season}? Subsequent matches will merge into previous season.` : "Delete this match?";
+
+            if (confirm(promptMsg)) {
+                matchHistory = matchHistory.filter(m => m.id !== id);
+                localStorage.setItem('padelHistory', JSON.stringify(matchHistory));
+                recalculateEverything();
+            }
+        }
+
+        function downloadData() {
+            const dataToExport = {
+                players,
+                matchHistory,
+                currentSession,
+                version: "v24"
+            };
+            const b = new Blob([JSON.stringify(dataToExport, null, 2)], { type: "application/json" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = `padel_data_v24_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        function clearAttendance() {
+            if (currentSession && currentSession.isLocked) return;
+            document.querySelectorAll('.attendee-check').forEach(c => c.checked = false);
+            if (currentSession) {
+                currentSession.attendees = [];
+                localStorage.setItem('padelCurrentSession', JSON.stringify(currentSession));
+            }
+            updateCounter();
+        }
     </script>
 </body>
 </html>
