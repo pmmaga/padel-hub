@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel Pro Hub - Data Migration & Seeder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #020617; }
+        pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 md:p-8 font-sans">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <header class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-900/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M9 11h6m-6 4h4"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black text-white">Padel Pro Hub — Data Migration & Seeder</h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Normalize records and seed Firestore</p>
+                </div>
+            </div>
+            <a href="index.html" class="text-xs font-bold px-4 py-2 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 hover:text-white transition">
+                &larr; Back to App
+            </a>
+        </header>
+
+        <!-- Step 1: Firebase Configuration -->
+        <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">1</span>
+                <h2 class="text-sm font-black uppercase text-white tracking-widest">Firebase Credentials</h2>
+            </div>
+            <p class="text-xs text-slate-400">
+                Your current project configuration from <code class="text-blue-400">firebase-config.js</code>:
+            </p>
+            <textarea id="firebaseConfigInput" rows="5" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 outline-none focus:border-blue-500"></textarea>
+            <div class="flex justify-between items-center">
+                <button onclick="saveFirebaseConfig()" class="text-xs font-bold px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl border border-slate-700 transition">
+                    Save Firebase Config
+                </button>
+                <span id="configStatus" class="text-xs text-slate-500 font-bold">Checking configuration...</span>
+            </div>
+        </section>
+
+        <!-- Step 2: Upload Existing Backup -->
+        <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">2</span>
+                <h2 class="text-sm font-black uppercase text-white tracking-widest">Select Existing Backup Data</h2>
+            </div>
+            <p class="text-xs text-slate-400">
+                Choose your exported <code class="text-blue-400">padel_data_v24_*.json</code> file, or click "Load from Browser LocalStorage".
+            </p>
+            <div class="flex flex-wrap gap-3">
+                <label class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black cursor-pointer shadow-lg shadow-blue-900/30 transition">
+                    📁 Browse Backup File <input type="file" id="backupFileInput" accept=".json" class="hidden" onchange="handleFileSelect(event)">
+                </label>
+                <button onclick="loadFromLocalStorage()" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-black border border-slate-700 transition">
+                    Load Current Browser LocalStorage
+                </button>
+            </div>
+            <div id="fileSummary" class="hidden p-4 bg-slate-800/60 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-1">
+                <div>Players found: <span id="summaryPlayers" class="font-bold text-white">0</span></div>
+                <div>Matches found: <span id="summaryMatches" class="font-bold text-white">0</span></div>
+                <div>Active session: <span id="summarySession" class="font-bold text-white">None</span></div>
+            </div>
+        </section>
+
+        <!-- Step 3: Admin Authentication -->
+        <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">3</span>
+                <h2 class="text-sm font-black uppercase text-white tracking-widest">Admin Authentication</h2>
+            </div>
+            <p class="text-xs text-slate-400">
+                Sign in with the Google Account configured as Admin in your Firestore rules so you can write to the database.
+            </p>
+            <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-2xl flex items-center justify-between">
+                <div id="adminUserStatus" class="text-xs text-slate-400">Not signed in</div>
+                <button onclick="handleGoogleSignIn()" id="googleSignInBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                    <span>Sign in with Google</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Step 4: Execute Normalization & Seeding -->
+        <section class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">4</span>
+                <h2 class="text-sm font-black uppercase text-white tracking-widest">Convert & Seed</h2>
+            </div>
+
+            <div class="flex flex-wrap gap-4">
+                <button onclick="downloadNormalizedJSON()" class="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider border border-slate-700 transition">
+                    ⬇️ Download Normalized Backup JSON
+                </button>
+                <button onclick="startFirebaseUpload()" id="uploadBtn" class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/30 transition">
+                    🚀 Migrate & Upload to Firestore
+                </button>
+            </div>
+
+            <div id="progressArea" class="hidden space-y-3 pt-2">
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="progressBar" class="bg-emerald-500 h-2 w-0 transition-all duration-300"></div>
+                </div>
+                <div id="logOutput" class="max-h-48 overflow-y-auto p-4 bg-slate-950 rounded-2xl border border-slate-800 text-[11px] font-mono text-slate-400 space-y-1"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { 
+            DEFAULT_FIREBASE_CONFIG, 
+            FIREBASE_CONFIG, 
+            isFirebaseConfigured,
+            googleProvider
+        } from './firebase-config.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            writeBatch 
+        } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+        import { 
+            getAuth, 
+            signInWithPopup,
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+        let loadedData = null;
+        let migrationAuth = null;
+        let migrationDb = null;
+        let currentAdminUser = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const configArea = document.getElementById('firebaseConfigInput');
+            const statusEl = document.getElementById('configStatus');
+
+            if (isFirebaseConfigured()) {
+                configArea.value = JSON.stringify(FIREBASE_CONFIG, null, 2);
+                statusEl.innerText = "✓ Configured (Project: " + FIREBASE_CONFIG.projectId + ")";
+                statusEl.className = "text-xs text-emerald-400 font-bold";
+                initFirebaseInstance(FIREBASE_CONFIG);
+            } else {
+                configArea.value = JSON.stringify(DEFAULT_FIREBASE_CONFIG, null, 2);
+                statusEl.innerText = "⚠️ Missing Firebase Config";
+                statusEl.className = "text-xs text-amber-400 font-bold";
+            }
+        });
+
+        function initFirebaseInstance(config) {
+            try {
+                const fbApp = initializeApp(config, "migrationSeederApp");
+                migrationAuth = getAuth(fbApp);
+                migrationDb = getFirestore(fbApp);
+
+                onAuthStateChanged(migrationAuth, (user) => {
+                    currentAdminUser = user;
+                    const statusText = document.getElementById('adminUserStatus');
+                    const btn = document.getElementById('googleSignInBtn');
+                    if (user && user.email) {
+                        statusText.innerHTML = `<span class="text-emerald-400 font-bold">✓ Signed in as Admin:</span> ${user.email}`;
+                        btn.innerText = "Switch Account";
+                    } else {
+                        statusText.innerText = "Not signed in";
+                        btn.innerText = "Sign in with Google";
+                    }
+                });
+            } catch (err) {
+                console.warn("Seeder Firebase Init:", err);
+            }
+        }
+
+        window.handleGoogleSignIn = async function() {
+            if (!migrationAuth) {
+                const text = document.getElementById('firebaseConfigInput').value;
+                const config = JSON.parse(text);
+                initFirebaseInstance(config);
+            }
+            try {
+                const result = await signInWithPopup(migrationAuth, googleProvider);
+                currentAdminUser = result.user;
+                alert("Signed in as " + result.user.email);
+            } catch (err) {
+                alert("Google Sign-In failed: " + err.message);
+            }
+        };
+
+        window.saveFirebaseConfig = function() {
+            try {
+                const text = document.getElementById('firebaseConfigInput').value;
+                const parsed = JSON.parse(text);
+                localStorage.setItem('padel_firebase_config', JSON.stringify(parsed));
+                alert("Firebase config saved successfully! Reloading...");
+                window.location.reload();
+            } catch (err) {
+                alert("Invalid JSON: " + err.message);
+            }
+        };
+
+        window.handleFileSelect = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const json = JSON.parse(ev.target.result);
+                    parseAndDisplayData(json);
+                } catch (err) {
+                    alert("Error parsing JSON file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.loadFromLocalStorage = function() {
+            const rawPlayers = localStorage.getItem('padelPlayers');
+            const rawHistory = localStorage.getItem('padelHistory');
+            const rawSession = localStorage.getItem('padelCurrentSession');
+
+            if (!rawPlayers && !rawHistory) {
+                alert("No local storage data found for Padel Pro Hub in this browser.");
+                return;
+            }
+
+            const data = {
+                players: rawPlayers ? JSON.parse(rawPlayers) : [],
+                matchHistory: rawHistory ? JSON.parse(rawHistory) : [],
+                currentSession: rawSession ? JSON.parse(rawSession) : null
+            };
+            parseAndDisplayData(data);
+        };
+
+        function parseAndDisplayData(data) {
+            loadedData = data;
+            const players = data.players || [];
+            const history = data.matchHistory || [];
+            const session = data.currentSession;
+
+            document.getElementById('summaryPlayers').innerText = `${players.length} players`;
+            document.getElementById('summaryMatches').innerText = `${history.length} records`;
+            document.getElementById('summarySession').innerText = session ? 'Present' : 'None';
+            document.getElementById('fileSummary').classList.remove('hidden');
+        }
+
+        function normalizeData() {
+            if (!loadedData) throw new Error("Please select or load existing data first.");
+
+            // 1. Map existing players to normalized IDs
+            const rawPlayers = loadedData.players || [];
+            const nameToIdMap = new Map();
+            const normalizedPlayers = [];
+
+            for (let i = 0; i < rawPlayers.length; i++) {
+                const p = rawPlayers[i];
+                const id = `p_${String(i + 1).padStart(2, '0')}`;
+                nameToIdMap.set(p.name, id);
+
+                normalizedPlayers.push({
+                    id: id,
+                    name: p.name,
+                    active: true,
+                    createdAt: Date.now() - (rawPlayers.length - i) * 1000
+                });
+            }
+
+            // Fallback for any player appearing in matches but missing in players array
+            const rawMatches = loadedData.matchHistory || [];
+            let extraCounter = normalizedPlayers.length + 1;
+            for (const m of rawMatches) {
+                if (m.isSeasonMarker || m.type === 'season_marker') continue;
+                const participants = [...(m.winners || []), ...(m.losers || [])];
+                for (const name of participants) {
+                    if (name && !nameToIdMap.has(name) && name !== 'BYE') {
+                        const id = `p_${String(extraCounter++).padStart(2, '0')}`;
+                        nameToIdMap.set(name, id);
+                        normalizedPlayers.push({
+                            id: id,
+                            name: name,
+                            active: true,
+                            createdAt: Date.now()
+                        });
+                    }
+                }
+            }
+
+            // 2. Normalize Match History (No player names repeated; single numeric timestamp)
+            const normalizedMatches = [];
+            for (const m of rawMatches) {
+                const isMarker = m.isSeasonMarker || m.type === 'season_marker';
+                const ts = Number(m.timestamp && !isNaN(m.timestamp) ? m.timestamp : (m.id || Date.now()));
+
+                if (isMarker) {
+                    normalizedMatches.push({
+                        id: String(m.id || ts),
+                        type: 'season_marker',
+                        season: Number(m.season || 1),
+                        timestamp: ts
+                    });
+                } else {
+                    const wIds = (m.winners || []).map(n => nameToIdMap.get(n)).filter(Boolean);
+                    const lIds = (m.losers || []).map(n => nameToIdMap.get(n)).filter(Boolean);
+
+                    normalizedMatches.push({
+                        id: String(m.id || ts),
+                        type: 'match',
+                        season: Number(m.season || 1),
+                        timestamp: ts,
+                        winners: wIds,
+                        losers: lIds
+                    });
+                }
+            }
+
+            // 3. Normalize Current Session if present
+            let normalizedSession = {
+                isLocked: false,
+                isCompleted: false,
+                totalRounds: 3,
+                generatedAt: Date.now(),
+                pairs: [],
+                schedule: []
+            };
+
+            if (loadedData.currentSession) {
+                const cs = loadedData.currentSession;
+                normalizedSession.isLocked = !!cs.isLocked;
+                normalizedSession.isCompleted = !!cs.isCompleted;
+                normalizedSession.totalRounds = cs.totalRounds || 3;
+                normalizedSession.generatedAt = cs.generatedAt || Date.now();
+
+                normalizedSession.pairs = (cs.pairs || []).map(p => ({
+                    id: p.id || Math.random().toString(36).substr(2, 5),
+                    playerIds: (p.names || []).map(n => nameToIdMap.get(n)).filter(Boolean),
+                    skill: p.skill || 0
+                }));
+
+                normalizedSession.schedule = (cs.schedule || []).map(rd => ({
+                    sideline: rd.sideline ? {
+                        id: rd.sideline.id,
+                        playerIds: (rd.sideline.names || []).map(n => nameToIdMap.get(n)).filter(Boolean)
+                    } : null,
+                    matches: (rd.matches || []).map(m => {
+                        const t1 = m.team1 || m[0];
+                        const t2 = m.team2 || m[1];
+                        return {
+                            team1: {
+                                id: t1 ? t1.id : '',
+                                playerIds: t1 ? (t1.names || []).map(n => nameToIdMap.get(n)).filter(Boolean) : []
+                            },
+                            team2: {
+                                id: t2 ? t2.id : '',
+                                playerIds: t2 ? (t2.names || []).map(n => nameToIdMap.get(n)).filter(Boolean) : []
+                            },
+                            winner: (m.winner !== undefined && m.winner !== null) ? m.winner : null
+                        };
+                    })
+                }));
+            }
+
+            // 4. Attendance
+            let attendeeIds = [];
+            if (loadedData.currentSession && loadedData.currentSession.attendees) {
+                attendeeIds = loadedData.currentSession.attendees.map(n => nameToIdMap.get(n)).filter(Boolean);
+            }
+
+            return {
+                players: normalizedPlayers,
+                matches: normalizedMatches,
+                session: normalizedSession,
+                attendance: { attendeeIds, updatedAt: Date.now() },
+                configApp: {
+                    attendanceLocked: !!(loadedData.currentSession && loadedData.currentSession.isLocked),
+                    updatedAt: Date.now()
+                }
+            };
+        }
+
+        window.downloadNormalizedJSON = function() {
+            try {
+                const converted = normalizeData();
+                const blob = new Blob([JSON.stringify(converted, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `padel_normalized_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                alert("Normalized JSON downloaded successfully!");
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        };
+
+        window.startFirebaseUpload = async function() {
+            const logEl = document.getElementById('logOutput');
+            const progressArea = document.getElementById('progressArea');
+            const bar = document.getElementById('progressBar');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            function log(msg) {
+                const d = document.createElement('div');
+                d.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                logEl.appendChild(d);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            try {
+                if (!loadedData) return alert("Please select or load existing data first in Step 2.");
+
+                if (!currentAdminUser) {
+                    return alert("Please click 'Sign in with Google' in Step 3 before uploading, so Firestore rules allow admin writes.");
+                }
+
+                if (!confirm(`This will upload normalized data to Firestore as admin (${currentAdminUser.email}). Proceed?`)) {
+                    return;
+                }
+
+                progressArea.classList.remove('hidden');
+                logEl.innerHTML = '';
+                uploadBtn.disabled = true;
+                bar.style.width = '10%';
+
+                log("Normalizing data (mapping player names to stable IDs)...");
+                const converted = normalizeData();
+                bar.style.width = '30%';
+                log(`Normalized ${converted.players.length} players and ${converted.matches.length} match records.`);
+
+                log(`Authenticated as Google Admin: ${currentAdminUser.email}`);
+                bar.style.width = '50%';
+
+                log("Writing /config/app, /config/admin_role probe...");
+                await setDoc(doc(migrationDb, "config", "app"), converted.configApp);
+                await setDoc(doc(migrationDb, "config", "admin_role"), { verified: true, updatedAt: Date.now() });
+
+                log("Writing /attendance/current and /session/current...");
+                await setDoc(doc(migrationDb, "attendance", "current"), converted.attendance);
+                await setDoc(doc(migrationDb, "session", "current"), converted.session);
+                bar.style.width = '65%';
+
+                // Batch write players
+                log(`Writing ${converted.players.length} normalized player documents...`);
+                let batch = writeBatch(migrationDb);
+                let count = 0;
+                for (const p of converted.players) {
+                    batch.set(doc(migrationDb, "players", p.id), p);
+                    count++;
+                    if (count % 400 === 0) {
+                        await batch.commit();
+                        batch = writeBatch(migrationDb);
+                    }
+                }
+                await batch.commit();
+                bar.style.width = '80%';
+                log("All players written.");
+
+                // Batch write matches
+                log(`Writing ${converted.matches.length} normalized match records...`);
+                batch = writeBatch(migrationDb);
+                count = 0;
+                for (const m of converted.matches) {
+                    batch.set(doc(migrationDb, "matches", m.id), m);
+                    count++;
+                    if (count % 400 === 0) {
+                        await batch.commit();
+                        batch = writeBatch(migrationDb);
+                    }
+                }
+                await batch.commit();
+                bar.style.width = '100%';
+                log("All matches written.");
+
+                log("🎉 Migration and seeding completed successfully!");
+                alert("Success! Your database is normalized and live in Firestore.");
+            } catch (err) {
+                log(`❌ Error: ${err.message}`);
+                console.error(err);
+                alert("Migration failed: " + err.message);
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
