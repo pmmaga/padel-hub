@@ -135,8 +135,8 @@
                             </select>
                         </div>
                         <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs font-bold">
-                            <button onclick="setLeaderboardView('rating')" id="btnViewRating" class="px-3 py-1.5 rounded-lg transition bg-blue-600 text-white shadow">Skill Rating</button>
-                            <button onclick="setLeaderboardView('wins')" id="btnViewWins" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">Wins Race</button>
+                            <button onclick="setLeaderboardView('rating')" id="btnViewRating" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">Skill Rating</button>
+                            <button onclick="setLeaderboardView('wins')" id="btnViewWins" class="px-3 py-1.5 rounded-lg transition bg-blue-600 text-white shadow">Wins Race</button>
                         </div>
                     </div>
 
@@ -302,7 +302,7 @@
         let matchHistory = [];     // { id, type, winners: [id1, id2], losers: [id3, id4], season, timestamp }
         let currentSession = null;
         let currentSeasonFilter = localStorage.getItem('padelSeasonFilter') || 'current';
-        let activeLeaderboardView = localStorage.getItem('padelLeaderboardView') || 'rating';
+        let activeLeaderboardView = localStorage.getItem('padelLeaderboardView') || 'wins';
 
         let stats = {};
         let allTimeStats = {};
